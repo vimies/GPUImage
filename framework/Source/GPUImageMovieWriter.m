@@ -275,6 +275,10 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
     });
 }
 
+- (AVAssetWriterStatus) writerStatus {
+    return assetWriter.status;
+}
+
 - (void)processAudioBuffer:(CMSampleBufferRef)audioBuffer;
 {
     if (!isRecording)
@@ -309,13 +313,13 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
 
 - (void)enableSynchronizationCallbacks;
 {
-    if (videoInputReadyCallback != NULL)
+    if (videoInputReadyCallback != NULL && assetWriter.status != AVAssetWriterStatusCancelled)
     {
         [assetWriter startWriting];
         [assetWriterVideoInput requestMediaDataWhenReadyOnQueue:[GPUImageOpenGLESContext sharedOpenGLESQueue] usingBlock:videoInputReadyCallback];
     }
     
-    if (audioInputReadyCallback != NULL)
+    if (audioInputReadyCallback != NULL && assetWriter.status != AVAssetWriterStatusCancelled)
     {
         [assetWriterAudioInput requestMediaDataWhenReadyOnQueue:[GPUImageOpenGLESContext sharedOpenGLESQueue] usingBlock:audioInputReadyCallback];
     }        

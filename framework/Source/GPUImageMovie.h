@@ -18,6 +18,9 @@
  */
 @property(readwrite, nonatomic) BOOL playAtActualSpeed;
 
+//This block is executed on the main thread once the process has been properly launched
+@property(nonatomic, copy) void(^launchedBlock)(void);
+
 /// @name Initialization and teardown
 - (id)initWithAsset:(AVAsset *)asset;
 - (id)initWithURL:(NSURL *)url;
@@ -29,6 +32,7 @@
 - (void)readNextAudioSampleFromOutput:(AVAssetReaderTrackOutput *)readerAudioTrackOutput;
 - (void)startProcessing;
 - (void)endProcessing;
+- (void)cancelProcessing;
 - (void)processMovieFrame:(CMSampleBufferRef)movieSampleBuffer; 
 
 @end

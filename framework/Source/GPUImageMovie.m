@@ -109,7 +109,11 @@
     [inputAsset loadValuesAsynchronouslyForKeys:[NSArray arrayWithObject:@"tracks"] completionHandler: ^{
         NSError *error = nil;
         AVKeyValueStatus tracksStatus = [inputAsset statusOfValueForKey:@"tracks" error:&error];
-        if (!tracksStatus == AVKeyValueStatusLoaded) 
+        AVAssetReaderStatus readerStatus = reader.status;
+        AVAssetWriterStatus writerStatus = synchronizedMovieWriter.writerStatus;
+        
+        NSLog(@"Writer status: %i", writerStatus,nil);
+        if (!tracksStatus == AVKeyValueStatusLoaded || readerStatus == AVAssetReaderStatusCancelled || writerStatus == AVAssetWriterStatusCancelled)
         {
             return;
         }
@@ -146,7 +150,7 @@
 
     if ([reader startReading] == NO) 
     {
-            NSLog(@"Error reading from file at URL: %@", weakSelf.url);
+            NSLog(@"Error %@ reading from file at URL: %@", reader.error, weakSelf.url);
         return;
     }
         
@@ -161,6 +165,7 @@
         }];
 
         [synchronizedMovieWriter enableSynchronizationCallbacks];
+        dispatch_async(dispatch_get_main_queue(), self.launchedBlock);
     }
     else
     {
@@ -350,6 +355,11 @@
         [synchronizedMovieWriter setVideoInputReadyCallback:^{}];
         [synchronizedMovieWriter setAudioInputReadyCallback:^{}];
     }
+}
+
+- (void)cancelProcessing {
+    [reader cancelReading];
+    [self endProcessing];
 }
 
 @end
