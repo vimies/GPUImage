@@ -295,21 +295,6 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
     });
 }
 
-- (void)cancelRecording
-{
-    if (assetWriter.status == AVAssetWriterStatusCompleted)
-    {
-        return;
-    }
-    
-    isRecording = NO;
-    runOnMainQueueWithoutDeadlocking(^{
-        //[assetWriterVideoInput markAsFinished];
-        //[assetWriterAudioInput markAsFinished];
-        [assetWriter cancelWriting];
-    });
-}
-
 - (AVAssetWriterStatus) writerStatus {
     return assetWriter.status;
 }
