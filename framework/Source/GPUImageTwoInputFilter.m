@@ -92,10 +92,9 @@ NSString *const kGPUImageTwoInputTextureVertexShaderString = SHADER_STRING
     }
     
     [GPUImageOpenGLESContext setActiveShaderProgram:filterProgram];
-    [self setUniformsForProgramAtIndex:0];
-
     [self setFilterFBO];
-    
+    [self setUniformsForProgramAtIndex:0];
+        
     glClearColor(backgroundColorRed, backgroundColorGreen, backgroundColorBlue, backgroundColorAlpha);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -112,6 +111,16 @@ NSString *const kGPUImageTwoInputTextureVertexShaderString = SHADER_STRING
     glVertexAttribPointer(filterSecondTextureCoordinateAttribute, 2, GL_FLOAT, 0, 0, [[self class] textureCoordinatesForRotation:inputRotation2]);
     
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);    
+}
+
+- (void)releaseInputTexturesIfNeeded;
+{
+    if (shouldConserveMemoryForNextFrame)
+    {
+        [firstTextureDelegate textureNoLongerNeededForTarget:self];
+        [secondTextureDelegate textureNoLongerNeededForTarget:self];
+        shouldConserveMemoryForNextFrame = NO;
+    }
 }
 
 #pragma mark -
@@ -192,6 +201,8 @@ NSString *const kGPUImageTwoInputTextureVertexShaderString = SHADER_STRING
 
 - (void)newFrameReadyAtTime:(CMTime)frameTime atIndex:(NSInteger)textureIndex;
 {
+    outputTextureRetainCount = [targets count];
+
     // You can set up infinite update loops, so this helps to short circuit them
     if (hasReceivedFirstFrame && hasReceivedSecondFrame)
     {
@@ -223,7 +234,7 @@ NSString *const kGPUImageTwoInputTextureVertexShaderString = SHADER_STRING
         secondFrameTime = frameTime;
         if (firstFrameCheckDisabled)
         {
-            hasReceivedSecondFrame = YES;
+            hasReceivedFirstFrame = YES;
         }
 
         if (!CMTIME_IS_INDEFINITE(frameTime))
@@ -244,5 +255,16 @@ NSString *const kGPUImageTwoInputTextureVertexShaderString = SHADER_STRING
     }
 }
 
+- (void)setTextureDelegate:(id<GPUImageTextureDelegate>)newTextureDelegate atIndex:(NSInteger)textureIndex;
+{
+    if (textureIndex == 0)
+    {
+        firstTextureDelegate = newTextureDelegate;
+    }
+    else
+    {
+        secondTextureDelegate = newTextureDelegate;
+    }
+}
 
 @end

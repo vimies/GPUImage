@@ -21,6 +21,7 @@
 @synthesize asset = _asset;
 @synthesize runBenchmark = _runBenchmark;
 @synthesize playAtActualSpeed = _playAtActualSpeed;
+@synthesize delegate = _delegate;
 
 #pragma mark -
 #pragma mark Initialization and teardown
@@ -182,6 +183,9 @@
 
         if (reader.status == AVAssetWriterStatusCompleted) {
                 [weakSelf endProcessing];
+            if ([self.delegate respondsToSelector:@selector(didCompletePlayingMovie)]) {
+                [self.delegate didCompletePlayingMovie];
+            }
         }
     }
 }
@@ -304,6 +308,7 @@
             
             [currentTarget setInputSize:CGSizeMake(bufferWidth, bufferHeight) atIndex:targetTextureIndex];
             [currentTarget setInputTexture:outputTexture atIndex:targetTextureIndex];
+            [currentTarget setTextureDelegate:self atIndex:targetTextureIndex];
             
             [currentTarget newFrameReadyAtTime:currentSampleTime atIndex:targetTextureIndex];
         }

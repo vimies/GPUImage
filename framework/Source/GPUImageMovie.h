@@ -3,6 +3,13 @@
 #import "GPUImageOpenGLESContext.h"
 #import "GPUImageOutput.h"
 
+/** Protocol for getting Movie played callback.
+ */
+@protocol GPUImageMovieDelegate <NSObject>
+
+- (void)didCompletePlayingMovie;
+@end
+
 /** Source object for filtering movies
  */
 @interface GPUImageMovie : GPUImageOutput
@@ -20,6 +27,9 @@
 
 //This block is executed on the main thread once the process has been properly launched
 @property(nonatomic, copy) void(^launchedBlock)(void);
+/** This is used to send the delete Movie did complete playing alert
+ */
+@property (readwrite, nonatomic, assign) id <GPUImageMovieDelegate>delegate;
 
 /// @name Initialization and teardown
 - (id)initWithAsset:(AVAsset *)asset;

@@ -6,9 +6,12 @@
 {
     CGSize pixelSizeOfImage;
     BOOL hasProcessedImage;
+    
+    dispatch_semaphore_t imageUpdateSemaphore;
 }
 
 // Initialization and teardown
+- (id)initWithURL:(NSURL *)url;
 - (id)initWithImage:(UIImage *)newImageSource;
 - (id)initWithCGImage:(CGImageRef)newImageSource;
 - (id)initWithImage:(UIImage *)newImageSource smoothlyScaleOutput:(BOOL)smoothlyScaleOutput;

@@ -16,8 +16,6 @@
     
     filters = [[NSMutableArray alloc] init];
     
-    [self deleteOutputTexture];
-    
     return self;
 }
 
@@ -90,12 +88,24 @@
 
 - (void)newFrameReadyAtTime:(CMTime)frameTime atIndex:(NSInteger)textureIndex;
 {
+    outputTextureRetainCount = [_initialFilters count];
+    
     for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
     {
         if (currentFilter != self.inputFilterToIgnoreForUpdates)
         {
             [currentFilter newFrameReadyAtTime:frameTime atIndex:textureIndex];
         }
+    }
+}
+
+- (void)setTextureDelegate:(id<GPUImageTextureDelegate>)newTextureDelegate atIndex:(NSInteger)textureIndex;
+{
+    firstTextureDelegate = newTextureDelegate;
+    
+    for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
+    {
+        [currentFilter setTextureDelegate:self atIndex:textureIndex];
     }
 }
 
@@ -168,6 +178,45 @@
     for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
     {
         [currentFilter endProcessing];
+    }
+}
+
+- (void)conserveMemoryForNextFrame;
+{
+    for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
+    {
+        [currentFilter conserveMemoryForNextFrame];
+    }
+}
+
+- (BOOL)wantsMonochromeInput;
+{
+    BOOL allInputsWantMonochromeInput = YES;
+    for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
+    {
+        allInputsWantMonochromeInput = allInputsWantMonochromeInput && [currentFilter wantsMonochromeInput];
+    }
+    
+    return allInputsWantMonochromeInput;
+}
+
+- (void)setCurrentlyReceivingMonochromeInput:(BOOL)newValue;
+{
+    for (GPUImageOutput<GPUImageInput> *currentFilter in _initialFilters)
+    {
+        [currentFilter setCurrentlyReceivingMonochromeInput:newValue];
+    }
+}
+
+#pragma mark -
+#pragma mark GPUImageTextureDelegate methods
+
+- (void)textureNoLongerNeededForTarget:(id<GPUImageInput>)textureTarget;
+{
+    outputTextureRetainCount--;
+    if (outputTextureRetainCount < 1)
+    {
+        [firstTextureDelegate textureNoLongerNeededForTarget:self];
     }
 }
 

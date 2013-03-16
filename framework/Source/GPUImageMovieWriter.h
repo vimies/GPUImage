@@ -31,6 +31,8 @@ extern NSString *const kGPUImageColorSwizzlingFragmentShaderString;
 
     CGSize videoSize;
     GPUImageRotationMode inputRotation;
+    
+    __unsafe_unretained id<GPUImageTextureDelegate> textureDelegate;
 }
 
 @property(readwrite, nonatomic) BOOL hasAudioTrack;
@@ -55,6 +57,7 @@ extern NSString *const kGPUImageColorSwizzlingFragmentShaderString;
 - (void)startRecording;
 - (void)startRecordingInOrientation:(CGAffineTransform)orientationTransform;
 - (void)finishRecording;
+- (void)finishRecordingWithCompletionHandler:(void (^)(void))handler;
 - (void)cancelRecording;
 - (void)processAudioBuffer:(CMSampleBufferRef)audioBuffer;
 - (void)enableSynchronizationCallbacks;
