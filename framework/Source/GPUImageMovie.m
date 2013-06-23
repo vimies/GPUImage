@@ -9,6 +9,7 @@
     AVAssetReader *reader;
     CMTime previousFrameTime;
     CFAbsoluteTime previousActualFrameTime;
+    BOOL keepLooping;
 }
 
 - (void)processAsset;
@@ -22,6 +23,7 @@
 @synthesize runBenchmark = _runBenchmark;
 @synthesize playAtActualSpeed = _playAtActualSpeed;
 @synthesize delegate = _delegate;
+@synthesize shouldRepeat = _shouldRepeat;
 
 #pragma mark -
 #pragma mark Initialization and teardown
@@ -58,14 +60,14 @@
 
 - (void)textureCacheSetup;
 {
-    if ([GPUImageOpenGLESContext supportsFastTextureUpload])
+    if ([GPUImageContext supportsFastTextureUpload])
     {
         runSynchronouslyOnVideoProcessingQueue(^{
-            [GPUImageOpenGLESContext useImageProcessingContext];
+            [GPUImageContext useImageProcessingContext];
 #if defined(__IPHONE_6_0)
-            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, [[GPUImageOpenGLESContext sharedImageProcessingOpenGLESContext] context], NULL, &coreVideoTextureCache);
+            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, [[GPUImageContext sharedImageProcessingContext] context], NULL, &coreVideoTextureCache);
 #else
-            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)[[GPUImageOpenGLESContext sharedImageProcessingOpenGLESContext] context], NULL, &coreVideoTextureCache);
+            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)[[GPUImageContext sharedImageProcessingContext] context], NULL, &coreVideoTextureCache);
 #endif
             if (err)
             {
@@ -80,7 +82,7 @@
 
 - (void)dealloc
 {
-    if ([GPUImageOpenGLESContext supportsFastTextureUpload])
+    if ([GPUImageContext supportsFastTextureUpload])
     {
         CFRelease(coreVideoTextureCache);
     }
@@ -102,11 +104,16 @@
       return;
     }
     
+    if (_shouldRepeat) keepLooping = YES;
+    
     previousFrameTime = kCMTimeZero;
     previousActualFrameTime = CFAbsoluteTimeGetCurrent();
   
     NSDictionary *inputOptions = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:AVURLAssetPreferPreciseDurationAndTimingKey];
-    AVURLAsset *inputAsset = [[AVURLAsset alloc] initWithURL:self.url options:inputOptions];    
+    AVURLAsset *inputAsset = [[AVURLAsset alloc] initWithURL:self.url options:inputOptions];
+    
+    GPUImageMovie __block *blockSelf = self;
+    
     [inputAsset loadValuesAsynchronouslyForKeys:[NSArray arrayWithObject:@"tracks"] completionHandler: ^{
         NSError *error = nil;
         AVKeyValueStatus tracksStatus = [inputAsset statusOfValueForKey:@"tracks" error:&error];
@@ -118,8 +125,9 @@
         {
             return;
         }
-        self.asset = inputAsset;
-        [self processAsset];
+        blockSelf.asset = inputAsset;
+        [blockSelf processAsset];
+        blockSelf = nil;
     }];
 }
 
@@ -170,7 +178,7 @@
     }
     else
     {
-        while (reader.status == AVAssetReaderStatusReading) 
+        while (reader.status == AVAssetReaderStatusReading && (!_shouldRepeat || keepLooping))
         {
                 [weakSelf readNextVideoFrameFromOutput:readerVideoTrackOutput];
 
@@ -182,10 +190,21 @@
         }
 
         if (reader.status == AVAssetWriterStatusCompleted) {
+                
+            [reader cancelReading];
+
+            if (keepLooping) {
+                reader = nil;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self startProcessing];
+                });
+            } else {
                 [weakSelf endProcessing];
-            if ([self.delegate respondsToSelector:@selector(didCompletePlayingMovie)]) {
-                [self.delegate didCompletePlayingMovie];
+                if ([self.delegate respondsToSelector:@selector(didCompletePlayingMovie)]) {
+                    [self.delegate didCompletePlayingMovie];
+                }
             }
+
         }
     }
 }
@@ -226,8 +245,10 @@
         }
         else
         {
-            videoEncodingIsFinished = YES;
-            [self endProcessing];
+            if (!keepLooping) {
+                videoEncodingIsFinished = YES;
+                [self endProcessing];
+            }
         }
     }
     else if (synchronizedMovieWriter != nil)
@@ -280,11 +301,11 @@
 
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
 
-    if ([GPUImageOpenGLESContext supportsFastTextureUpload])
+    if ([GPUImageContext supportsFastTextureUpload])
     {
         CVPixelBufferLockBaseAddress(movieFrame, 0);
         
-        [GPUImageOpenGLESContext useImageProcessingContext];
+        [GPUImageContext useImageProcessingContext];
         CVOpenGLESTextureRef texture = NULL;
         CVReturn err = CVOpenGLESTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, movieFrame, NULL, GL_TEXTURE_2D, GL_RGBA, bufferWidth, bufferHeight, GL_BGRA, GL_UNSIGNED_BYTE, 0, &texture);
         
@@ -350,6 +371,8 @@
 
 - (void)endProcessing;
 {
+    keepLooping = NO;
+    
     for (id<GPUImageInput> currentTarget in targets)
     {
         [currentTarget endProcessing];
@@ -362,8 +385,11 @@
     }
 }
 
-- (void)cancelProcessing {
-    [reader cancelReading];
+- (void)cancelProcessing
+{
+    if (reader) {
+        [reader cancelReading];
+    }
     [self endProcessing];
 }
 
