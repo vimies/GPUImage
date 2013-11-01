@@ -254,11 +254,7 @@
 
     if ([reader startReading] == NO) 
     {
-<<<<<<< HEAD
-            NSLog(@"Error %@ reading from file at URL: %@", reader.error, weakSelf.url);
-=======
-            NSLog(@"Error reading from file at URL: %@", self.url);
->>>>>>> 55312a7ec1fc2a07eac3a528b4856a4ec820d6f1
+        NSLog(@"Error reading from file at URL: %@", self.url);
         return;
     }
 
